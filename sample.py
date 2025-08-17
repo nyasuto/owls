@@ -33,10 +33,19 @@ mediator = autogen.AssistantAgent(
 
 # コーディネート（1ラウンド例）
 topic = "都心の主要エリアを『平日昼の自家用車通行禁止』にするべきか？"
-pro_msg = pro.generate_reply(messages=[{"role":"user","content":f"テーマ: {topic}。強く賛成の立場で論じて。"}])
-con_msg = con.generate_reply(messages=[{"role":"user","content":f"テーマ: {topic}。強く反対の立場で論じて。"}])
-final = mediator.generate_reply(messages=[
-    {"role":"user","content": f"Proの主張:\n{pro_msg['content']}\n\nConの主張:\n{con_msg['content']}\n\n統合案を出して。"}
-])
+pro_msg = pro.generate_reply(
+    messages=[{"role": "user", "content": f"テーマ: {topic}。強く賛成の立場で論じて。"}]
+)
+con_msg = con.generate_reply(
+    messages=[{"role": "user", "content": f"テーマ: {topic}。強く反対の立場で論じて。"}]
+)
+final = mediator.generate_reply(
+    messages=[
+        {
+            "role": "user",
+            "content": f"Proの主張:\n{pro_msg['content']}\n\nConの主張:\n{con_msg['content']}\n\n統合案を出して。",
+        }
+    ]
+)
 
 print(final["content"])
