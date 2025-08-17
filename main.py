@@ -1,34 +1,28 @@
 # pip install pyautogen
 import autogen
 import datetime
-import os
 import sys
+from src.cli import main as cli_main
 
+# CLI引数をパースして設定を取得
+try:
+    config = cli_main()
+    # dry-runの場合はここで終了
+    if config.cli_args.get("dry_run"):
+        sys.exit(0)
 
-# OpenAI APIキー確認機能
-def check_openai_api_key(api_key):
-    if not api_key:
-        print("❌ OpenAI APIキーが設定されていません")
-        print("   環境変数 OPENAI_API_KEY を設定してください")
-        print("   例: export OPENAI_API_KEY='your-api-key-here'")
-        return False
+except SystemExit as e:
+    # Clickが正常終了した場合（--help, --version等）
+    sys.exit(e.code)
 
-    print("✅ OpenAI APIキーが設定されています")
-    return True
-
-
+# OpenAI設定を取得
+openai_config = config.get_openai_config()
 CFG = {
-    "model": "gpt-5",
-    "api_key": os.environ.get("OPENAI_API_KEY"),
+    "model": openai_config["model"],
+    "api_key": openai_config["api_key"],
+    "temperature": openai_config["temperature"],
+    "max_tokens": openai_config["max_tokens"],
 }
-
-# OpenAI APIキー確認
-if not check_openai_api_key(CFG["api_key"]):
-    print("\n🔧 解決方法:")
-    print("1. OpenAIのAPIキーを取得")
-    print("2. 環境変数を設定: export OPENAI_API_KEY='your-api-key'")
-    print("3. または .env ファイルに OPENAI_API_KEY=your-api-key を記載")
-    sys.exit(1)
 
 pro = autogen.AssistantAgent(
     name="Pro",
@@ -85,24 +79,36 @@ user_proxy = autogen.UserProxyAgent(
     code_execution_config=False,
 )
 
+# 議論設定を取得
+debate_config = config.get_debate_config()
+
 # GroupChatとGroupChatManagerを設定
 groupchat = autogen.GroupChat(
     agents=[pro, con, mediator],
     messages=[],
-    max_round=10,  # user_proxy初期メッセージ + 3ラウンド × 3人 = 10回
-    speaker_selection_method="round_robin",
+    max_round=debate_config["max_rounds"],
+    speaker_selection_method=debate_config["speaker_selection"],
 )
 
 manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=CFG)
 
-# 複数ラウンドの議論を開始
-topic = "新規顧客向けSaaSダッシュボード開発: Plan A 内製 vs Plan B 外注"
+# プロジェクト設定を取得
+project_config = config.get_project_config()
+logging_config = config.get_logging_config()
 
-premises = """前提条件:
-• 社内には業務知識に強いエンジニア2名がいるが、リソースは月80hまで
-• 外注先はクラウド案件経験豊富だが、業務知識はない  
-• 予算は初年度1,000万円
-• 半年以内にプロトタイプをデモする必要がある"""
+# トピックを取得（CLI引数 > デフォルト）
+topic = config.cli_args.get("topic")
+if not topic:
+    topic = f"{project_config['name']}: Plan A 内製 vs Plan B 外注"
+
+# 前提条件を設定から生成
+constraints = project_config["constraints"]
+conditions = project_config["conditions"]
+premises = f"""前提条件:
+• 社内には{"業務知識に強い" if conditions["internal_has_domain_knowledge"] else ""}エンジニア{constraints["internal_engineers"]}名がいるが、リソースは月{constraints["monthly_hours"]}hまで
+• 外注先は{"クラウド案件経験豊富" if conditions["external_has_cloud_experience"] else "クラウド経験なし"}だが、{"業務知識はない" if not conditions["external_has_domain_knowledge"] else "業務知識あり"}
+• 予算は初年度{constraints["budget_yen"]:,}円
+• {constraints["deadline_months"]}ヶ月以内にプロトタイプをデモする必要がある"""
 
 initial_message = f"""テーマ: {topic}
 
@@ -115,7 +121,8 @@ initial_message = f"""テーマ: {topic}
 # Markdownファイルの初期化
 def initialize_markdown_file(topic, start_time):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"debate_{timestamp}.md"
+    prefix = logging_config["output"]["filename_prefix"]
+    filename = f"{prefix}_{timestamp}.md"
 
     with open(filename, "w", encoding="utf-8") as f:
         f.write("# AI議論セッション\n\n")
