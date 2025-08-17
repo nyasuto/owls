@@ -1,0 +1,61 @@
+# OwlsプロジェクトのAI議論システム設定ファイル
+# 環境変数 > config.yml > デフォルト値の優先順位で適用されます
+
+# OpenAI API設定
+openai:
+  api_key: null  # 環境変数 OPENAI_API_KEY を推奨
+  model: "gpt-4"  # 使用するモデル（gpt-4, gpt-3.5-turbo等）
+  temperature: 0.7  # 応答のランダム性（0.0-1.0）
+  max_tokens: 2000  # 最大トークン数
+
+# 議論設定
+debate:
+  max_rounds: 10  # 最大ラウンド数
+  speaker_selection: "round_robin"  # 発言者選択方法
+  
+  # エージェント設定
+  agents:
+    pro:
+      name: "Pro"
+      role: "Plan A（内製）支持者"
+      
+    con:
+      name: "Con" 
+      role: "Plan B（外注）支持者"
+      
+    mediator:
+      name: "Mediator"
+      role: "調停役"
+
+# ログ設定
+logging:
+  # ファイル出力設定
+  output:
+    enabled: true
+    directory: "."  # 出力ディレクトリ
+    filename_prefix: "debate"  # ファイル名プレフィックス
+    format: "markdown"  # 出力形式（markdown, json, txt）
+    
+  # コンソール出力設定
+  console:
+    enabled: true
+    show_timestamps: true
+    show_progress: true
+
+# プロジェクト前提条件（デフォルト）
+# これらの設定は議論のコンテキストとして使用されます
+project:
+  name: "新規顧客向けSaaSダッシュボード開発"
+  
+  # リソース制約
+  constraints:
+    internal_engineers: 2  # 社内エンジニア数
+    monthly_hours: 80      # 月間稼働時間上限
+    budget_yen: 10000000   # 初年度予算（円）
+    deadline_months: 6     # プロトタイプまでの期限（月）
+    
+  # 条件設定
+  conditions:
+    internal_has_domain_knowledge: true   # 社内エンジニアの業務知識有無
+    external_has_cloud_experience: true   # 外注先のクラウド経験有無
+    external_has_domain_knowledge: false  # 外注先の業務知識有無
